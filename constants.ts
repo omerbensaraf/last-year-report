@@ -101,7 +101,7 @@ export const SECTIONS: SectionContent[] = [
         lessonColor: 'text-cyber-400'
       },
       { 
-        title: 'Unified Routines', 
+        title: 'Unified Routines & Collaborations', 
         description: 'Adjusting and standardizing the same base routines across the entire group to create a consistent engineering heartbeat.' 
       },
       { 

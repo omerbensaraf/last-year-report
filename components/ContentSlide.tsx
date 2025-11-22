@@ -1,11 +1,14 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionContent } from '../types';
-import { CheckCircle2, Quote, Upload, Wand2, Plus, Hash } from 'lucide-react';
+import { CheckCircle2, Quote, Upload, Wand2, Plus, Hash, Wifi, WifiOff, Maximize2, X } from 'lucide-react';
 import { INNOVATION_QUOTES } from '../constants';
+import { isFirebaseReady } from '../firebase';
 
 interface ContentSlideProps {
   data: SectionContent;
+  liveImages?: string[];
+  connectionStatus?: 'connected' | 'disconnected' | 'error';
 }
 
 // Helper to format text with bold segments using **text** syntax
@@ -107,34 +110,28 @@ const QuoteTicker: React.FC = () => {
   );
 };
 
-export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
+export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [], connectionStatus = 'disconnected' }) => {
   const [animate, setAnimate] = useState(false);
   const [localImages, setLocalImages] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [focusedImage, setFocusedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load images from storage and listen for changes (cross-tab sync)
+  // Local storage fallback just in case
   useEffect(() => {
-    const loadImages = () => {
-        try {
-            const stored = localStorage.getItem('gallery_uploads');
-            if (stored) {
-                setLocalImages(JSON.parse(stored));
+    if (!isFirebaseReady) {
+        const loadImages = () => {
+            try {
+                const stored = localStorage.getItem('gallery_uploads');
+                if (stored) {
+                    setLocalImages(JSON.parse(stored));
+                }
+            } catch (e) {
+                console.error("Failed to load local images", e);
             }
-        } catch (e) {
-            console.error("Failed to load local images", e);
-        }
-    };
-
-    loadImages();
-    
-    // Listen for updates from other tabs
-    const handleStorage = (e: StorageEvent) => {
-        if (e.key === 'gallery_uploads') loadImages();
-    };
-    
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+        };
+        loadImages();
+    }
   }, []);
 
   useEffect(() => {
@@ -143,7 +140,7 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
     return () => clearTimeout(timer);
   }, [data.id]);
 
-  // Handle Drop for Direct Upload
+  // Handle Drop for Direct Upload (Local only for simplicity here, or trigger upload logic)
   const handleDrop = (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
@@ -166,9 +163,8 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
       const reader = new FileReader();
       reader.onloadend = () => {
           const newImage = reader.result as string;
-          const updated = [...localImages, newImage];
-          setLocalImages(updated);
-          localStorage.setItem('gallery_uploads', JSON.stringify(updated));
+          // For drag and drop we add to local state for immediate feedback
+          setLocalImages(prev => [newImage, ...prev]);
       };
       reader.readAsDataURL(file);
   };
@@ -180,9 +176,7 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
           'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=500&q=80',
           'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&w=500&q=80'
       ];
-      const updated = [...localImages, ...demoImages];
-      setLocalImages(updated);
-      localStorage.setItem('gallery_uploads', JSON.stringify(updated));
+      setLocalImages(prev => [...demoImages, ...prev]);
   }
 
   // Project Grid Config
@@ -225,15 +219,52 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
 
   // Gallery Configuration
   const galleryConfig = useMemo(() => {
-     const allImages = [...(data.galleryImages || []), ...localImages];
-     return allImages.map((src, i) => {
+     // Merge standard gallery images, live firebase images, and local interactions
+     const allImages = [...(data.galleryImages || []), ...liveImages, ...localImages];
+     const uniqueImages = Array.from(new Set(allImages));
+     const total = uniqueImages.length;
+
+     // Grid Calculation:
+     // Calculate columns based on square root to get a roughly rectangular/square grid
+     // Multiplier 1.8 biases towards landscape (more columns, fewer rows) which fits screens better
+     const cols = Math.ceil(Math.sqrt(total * 1.8));
+     const rows = Math.ceil(total / cols);
+
+     return uniqueImages.map((src, i) => {
          const isNew = i >= (data.galleryImages?.length || 0);
+         
+         // Deterministic Seed for consistent rendering during re-renders (unless images change)
          const seed = (i * 9301 + 49297) % 233280;
-         const random = seed / 233280;
-         const top = 5 + (random * 70); 
-         const left = 5 + ((seed % 100) / 100) * 80; 
-         const rotation = (random - 0.5) * 40;
-         const scale = 0.7 + (random * 0.5);
+         const rnd = seed / 233280; // 0 to 1
+         
+         // Calculate Grid Cell
+         const c = i % cols;
+         const r = Math.floor(i / cols);
+
+         // Calculate Base Percentage Position
+         // We use 90% of width and 75% of height to avoid edges and header overlap
+         const xStep = 90 / cols;
+         const yStep = 75 / rows;
+
+         // Random Jitter within the cell to avoid "Grid" look
+         // Limit jitter to 40% of cell size to prevent significant overlap
+         const jitterX = (rnd - 0.5) * (xStep * 0.5); 
+         const jitterY = ((rnd * 100 % 1) - 0.5) * (yStep * 0.5);
+
+         // Final Coordinates
+         const left = 5 + (c * xStep) + (xStep / 2) + jitterX; // Center in cell + jitter
+         const top = 15 + (r * yStep) + (yStep / 2) + jitterY; // Start lower (15%) for headers
+
+         // Visual Randomization
+         const rotation = (rnd - 0.5) * 16; // -8 to 8 degrees
+         const scale = 0.9 + (rnd * 0.2); // 0.9 to 1.1 size variation
+
+         // Float Animation Params
+         // Reduced movement range to prevent collisions during animation
+         const floatDuration = 8 + (rnd * 8); 
+         const delay = i * 0.15;
+         const xMove = (rnd > 0.5 ? 1 : -1) * 12; 
+         const yMove = (rnd > 0.5 ? 1 : -1) * 12;
 
          return {
              src,
@@ -241,26 +272,65 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
              scale,
              top,
              left,
-             floatDuration: 8 + (random * 8),
-             delay: i * 0.2,
+             floatDuration,
+             delay,
+             xMove,
+             yMove,
              isNew
          };
      });
-  }, [data.galleryImages, localImages]);
+  }, [data.galleryImages, localImages, liveImages]);
 
   // --- GALLERY MODE ---
   if (data.id === 'gallery') {
       return (
         <main 
-            className={`relative w-full h-full overflow-hidden ${animate ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}
+            className={`relative w-full h-full overflow-hidden ${animate ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000 bg-black`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
         >
              <style>{`
-                @keyframes floatCard {
-                    0%, 100% { transform: translateY(0) rotate(var(--rot)) scale(var(--sc)); }
-                    50% { transform: translateY(-20px) rotate(var(--rot)) scale(var(--sc)); }
+                @keyframes spaceFloat {
+                    0% { transform: translate(-50%, -50%) translate(0px, 0px) rotate(var(--rot)) scale(var(--sc)); }
+                    33% { transform: translate(-50%, -50%) translate(var(--mx), var(--my)) rotate(var(--rot)) scale(var(--sc)); }
+                    66% { transform: translate(-50%, -50%) translate(calc(var(--mx) * -0.5), calc(var(--my) * 0.5)) rotate(var(--rot)) scale(var(--sc)); }
+                    100% { transform: translate(-50%, -50%) translate(0px, 0px) rotate(var(--rot)) scale(var(--sc)); }
+                }
+                .gallery-card-container {
+                    perspective: 1000px;
+                    will-change: transform, z-index;
+                }
+                /* Apply z-index boost to container on hover to escape stacking context issues */
+                .gallery-card-container:hover {
+                    z-index: 9999 !important;
+                }
+                /* Pause animation on hover */
+                .gallery-card-container:hover {
+                    animation-play-state: paused;
+                }
+
+                .gallery-card {
+                    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+                }
+                
+                /* The pop effect happens on the inner card when the container is hovered */
+                .gallery-card-container:hover .gallery-card {
+                    transform: rotate(0deg) scale(1.35); /* 35% larger on hover */
+                    box-shadow: 0 20px 60px rgba(14, 165, 233, 0.4), 0 0 30px rgba(14, 165, 233, 0.2);
+                    border-color: #38bdf8;
+                }
+
+                /* Glare effect */
+                .gallery-card::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(125deg, rgba(255,255,255,0.3) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.1) 100%);
+                    opacity: 0.4;
+                    pointer-events: none;
+                    transition: opacity 0.3s;
                 }
              `}</style>
              
@@ -270,12 +340,40 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                  </div>
              )}
 
+             {/* Focused Image Overlay */}
+             {focusedImage && (
+                 <div 
+                    className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-16 animate-fade-in"
+                    onClick={() => setFocusedImage(null)}
+                 >
+                     <img src={focusedImage} className="max-w-full max-h-full rounded shadow-[0_0_100px_rgba(14,165,233,0.5)] border border-cyber-500/50" />
+                     <button className="absolute top-8 right-8 text-white hover:text-cyber-400 bg-black/50 rounded-full p-2">
+                         <X size={32} />
+                     </button>
+                 </div>
+             )}
+
              <div className="absolute top-0 left-0 w-full z-30 bg-gradient-to-b from-black/90 via-black/50 to-transparent p-8 pb-24 pointer-events-none">
-                 <h2 className="text-4xl md:text-6xl font-bold text-white drop-shadow-lg mb-2">{data.title}</h2>
+                 <div className="flex items-center justify-between max-w-6xl">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-4xl md:text-6xl font-bold text-white drop-shadow-lg mb-2">{data.title}</h2>
+                        
+                        {connectionStatus === 'connected' && (
+                            <div className="flex items-center gap-2 px-2 py-1 rounded bg-green-900/30 border border-green-500/30 text-green-400 text-xs font-mono animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                                <Wifi size={12} /> CLOUD_LINKED
+                            </div>
+                        )}
+                        {connectionStatus === 'error' && (
+                            <div className="flex items-center gap-2 px-2 py-1 rounded bg-red-900/30 border border-red-500/30 text-red-400 text-xs font-mono">
+                                <WifiOff size={12} /> OFFLINE_MODE
+                            </div>
+                        )}
+                    </div>
+                 </div>
                  <p className="text-xl text-cyber-300 flex items-center gap-2">
                     {data.subtitle}
                     <span className="text-xs bg-cyber-900/50 border border-cyber-500/30 px-2 py-1 rounded text-slate-400">
-                        {galleryConfig.length} Memories
+                        {galleryConfig.length} Items
                     </span>
                  </p>
              </div>
@@ -303,7 +401,7 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                  />
              </div>
 
-             <div className="absolute inset-0 overflow-hidden">
+             <div className="absolute inset-0 overflow-visible pointer-events-none">
                 {galleryConfig.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-slate-500 font-mono animate-pulse opacity-50">
                         <Upload size={48} className="mb-4" />
@@ -314,27 +412,43 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                 {galleryConfig.map((img, idx) => (
                     <div
                         key={`${idx}-${img.src}`}
-                        className="absolute p-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl hover:z-50 transition-all duration-500 cursor-pointer group"
+                        className="absolute gallery-card-container pointer-events-auto cursor-pointer"
                         style={{
                             top: `${img.top}%`,
                             left: `${img.left}%`,
-                            width: '220px',
+                            // Use a clamped width to keep them large but responsive
+                            width: 'clamp(200px, 25vw, 320px)',
                             // @ts-ignore
                             '--rot': `${img.rotation}deg`,
                             // @ts-ignore
                             '--sc': `${img.scale}`,
-                            animation: `floatCard ${img.floatDuration}s ease-in-out infinite`,
+                             // @ts-ignore
+                            '--mx': `${img.xMove}px`,
+                             // @ts-ignore
+                            '--my': `${img.yMove}px`,
+                            animation: `spaceFloat ${img.floatDuration}s ease-in-out infinite`,
                             animationDelay: `${img.delay}s`,
-                            transition: 'top 1s, left 1s'
+                            zIndex: Math.floor(img.scale * 10)
                         }}
+                        onClick={() => setFocusedImage(img.src)}
                     >
-                        <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-900">
-                            <img src={img.src} alt="Memory" className="w-full h-full object-cover opacity-90 group-hover:opacity-100" />
+                        {/* 
+                          We render the card with a high aspect ratio of 4/3.
+                          The 'transform: translate(-50%, -50%)' is handled in the keyframes
+                          to center the card on its grid coordinate.
+                        */}
+                        <div className="gallery-card relative aspect-[4/3] overflow-hidden rounded-sm bg-slate-900 border-[6px] border-white/90 outline outline-1 outline-black/50">
+                            <img src={img.src} alt="Memory" className="w-full h-full object-cover" />
+                            
                             {img.isNew && (
-                                <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-lg animate-pulse">
+                                <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-lg animate-pulse z-10">
                                     NEW
                                 </div>
                             )}
+                            
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="text-[8px] text-cyber-300 font-mono">IMG_{1000+idx}_RAW</div>
+                            </div>
                         </div>
                     </div>
                 ))}

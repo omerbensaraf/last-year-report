@@ -1,6 +1,9 @@
 
 import React, { useState } from 'react';
-import { Upload, Check, Camera, ArrowLeft, RefreshCcw } from 'lucide-react';
+import { Upload, Check, Camera, ArrowLeft, RefreshCcw, CloudUpload } from 'lucide-react';
+import { db, storage, isFirebaseReady } from '../firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
 
 export const UploadView: React.FC = () => {
   const [uploaded, setUploaded] = useState(false);
@@ -18,28 +21,52 @@ export const UploadView: React.FC = () => {
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!preview) return;
     
     setIsUploading(true);
 
-    // Save to local storage
     try {
-        const existing = localStorage.getItem('gallery_uploads');
-        const uploads = existing ? JSON.parse(existing) : [];
-        uploads.push(preview);
-        localStorage.setItem('gallery_uploads', JSON.stringify(uploads));
-        
-        // Trigger storage event for current window if opened in same window context (edge case)
-        window.dispatchEvent(new Event('storage'));
-    } catch (e) {
-        console.error("Storage failed", e);
-    }
+        if (isFirebaseReady && storage && db) {
+            // --- CLOUD UPLOAD (Production) ---
+            // 1. Create a unique filename
+            const filename = `memories/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+            const storageRef = ref(storage, filename);
 
-    setTimeout(() => {
-      setIsUploading(false);
-      setUploaded(true);
-    }, 1000);
+            // 2. Upload the base64 string
+            await uploadString(storageRef, preview, 'data_url');
+
+            // 3. Get the public URL
+            const downloadURL = await getDownloadURL(storageRef);
+
+            // 4. Save metadata to Firestore for real-time syncing
+            // Note: We store timestamp as a number for easier sorting
+            await addDoc(collection(db, 'memories'), {
+                url: downloadURL,
+                timestamp: Date.now(),
+                type: 'photo'
+            });
+        } else {
+            // --- LOCAL FALLBACK (Demo/No Config) ---
+            // This only works if the presentation is running on the SAME device as the uploader
+            console.warn("Firebase not configured. Falling back to local storage.");
+            const existing = localStorage.getItem('gallery_uploads');
+            const uploads = existing ? JSON.parse(existing) : [];
+            uploads.push(preview);
+            localStorage.setItem('gallery_uploads', JSON.stringify(uploads));
+            window.dispatchEvent(new Event('storage'));
+        }
+        
+        setTimeout(() => {
+            setIsUploading(false);
+            setUploaded(true);
+        }, 800);
+
+    } catch (error) {
+        console.error("Upload failed:", error);
+        setIsUploading(false);
+        alert("Upload failed. Please try again.");
+    }
   };
 
   const reset = () => {
@@ -76,14 +103,23 @@ export const UploadView: React.FC = () => {
     <div className="min-h-screen bg-[#05050a] text-white flex flex-col relative overflow-hidden font-sans">
        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyber-900/20 via-[#05050a] to-[#05050a] pointer-events-none" />
 
-       <div className="flex items-center p-6 relative z-10">
-         <div className="p-2 bg-cyber-900/50 rounded-lg border border-cyber-500/20 mr-4">
-            <Camera className="text-cyber-400" size={24} />
+       <div className="flex items-center p-6 relative z-10 justify-between">
+         <div className="flex items-center">
+            <div className="p-2 bg-cyber-900/50 rounded-lg border border-cyber-500/20 mr-4">
+                <Camera className="text-cyber-400" size={24} />
+            </div>
+            <div>
+                <h1 className="font-bold text-lg leading-none">Photo Contribution</h1>
+                <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
+                    {isFirebaseReady ? 'Secure_Cloud_Link' : 'Demo_Local_Link'}
+                </span>
+            </div>
          </div>
-         <div>
-            <h1 className="font-bold text-lg leading-none">Photo Contribution</h1>
-            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Secure_Link</span>
-         </div>
+         {!isFirebaseReady && (
+             <div className="text-[10px] text-orange-500 bg-orange-900/20 px-2 py-1 rounded border border-orange-500/30">
+                 Demo Mode
+             </div>
+         )}
        </div>
        
        <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 relative z-10 w-full max-w-md mx-auto">
@@ -131,10 +167,13 @@ export const UploadView: React.FC = () => {
               {isUploading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>SENDING...</span>
+                    <span>UPLOADING...</span>
                   </>
               ) : (
-                  <span>SEND TO SCREEN</span>
+                  <>
+                    <CloudUpload size={20} />
+                    <span>SEND TO SCREEN</span>
+                  </>
               )}
           </button>
        </div>

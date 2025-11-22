@@ -8,21 +8,66 @@ import { UploadView } from './components/UploadView';
 import { SECTIONS } from './constants';
 import { SectionId } from './types';
 import { Menu, X } from 'lucide-react';
+import { db, isFirebaseReady } from './firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 const App: React.FC = () => {
+  // Lazy initialization for upload mode to prevent main app render on mobile
+  const [isUploadMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') === 'upload';
+    }
+    return false;
+  });
+
   const [showIntro, setShowIntro] = useState(true);
   const [warpSpeed, setWarpSpeed] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<SectionId>('identity');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isUploadMode, setIsUploadMode] = useState(false);
+  const [liveMemories, setLiveMemories] = useState<string[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
 
   useEffect(() => {
-    // Check for upload mode query param
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'upload') {
-      setIsUploadMode(true);
+    // If we are in upload mode, do NOT setup the listener for downloading images
+    if (isUploadMode) return;
+
+    // --- GLOBAL FIREBASE LISTENER ---
+    let unsubscribe: () => void;
+
+    if (isFirebaseReady && db) {
+      try {
+        // We use a basic query without 'orderBy' to avoid "Missing Index" errors during prototype phase.
+        // We will sort in Javascript instead.
+        const q = query(collection(db, "memories"));
+        
+        unsubscribe = onSnapshot(q, (snapshot) => {
+           const docs = snapshot.docs.map(doc => doc.data());
+           // Client-side sort by timestamp descending
+           docs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+           
+           const urls = docs.map(d => d.url).filter(u => !!u);
+           setLiveMemories(urls);
+           setConnectionStatus('connected');
+        }, (error) => {
+           console.error("Firebase Live Sync Error:", error);
+           setConnectionStatus('error');
+        });
+      } catch (err) {
+        console.error("Failed to setup Firebase listener:", err);
+        setConnectionStatus('error');
+      }
     }
-  }, []);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isUploadMode]);
+
+  // If in upload mode, render the upload interface immediately
+  if (isUploadMode) {
+    return <UploadView />;
+  }
 
   const activeSectionData = SECTIONS.find(s => s.id === activeSectionId) || SECTIONS[0];
 
@@ -39,12 +84,7 @@ const App: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  // If in upload mode, render the upload interface only
-  if (isUploadMode) {
-    return <UploadView />;
-  }
-
-  // Key to force remounting of content when intro finishes
+  // Key to force remounting of content when intro finishes or section changes
   const contentKey = `${activeSectionId}-${showIntro ? 'intro' : 'main'}`;
 
   return (
@@ -67,7 +107,12 @@ const App: React.FC = () => {
 
           {/* Main Content Area */}
           <div className="flex-1 h-full relative">
-            <ContentSlide key={contentKey} data={activeSectionData} />
+            <ContentSlide 
+              key={contentKey} 
+              data={activeSectionData} 
+              liveImages={liveMemories}
+              connectionStatus={connectionStatus}
+            />
           </div>
         </div>
 
@@ -93,7 +138,12 @@ const App: React.FC = () => {
 
           {/* Mobile Content */}
           <div className="flex-1 overflow-hidden">
-            <ContentSlide key={`${contentKey}-mobile`} data={activeSectionData} />
+            <ContentSlide 
+              key={`${contentKey}-mobile`} 
+              data={activeSectionData} 
+              liveImages={liveMemories}
+              connectionStatus={connectionStatus}
+            />
           </div>
         </div>
       </div>
