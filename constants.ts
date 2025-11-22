@@ -1,4 +1,5 @@
 
+
 import { 
   Users, 
   Trophy, 
@@ -25,10 +26,9 @@ export const SECTIONS: SectionContent[] = [
       { label: 'Developers', value: '139.5' },
       { label: 'Agile Teams', value: '21' },
       { label: 'Men / Women', value: '80.5 / 59' },
-      { label: '5 Networks', value: 'Global, Shmura, TSN, Azure, Labs' },
-      { label: 'Common Languages', value: 'Java, React, C++, C#, Python, Node' }
+      { label: '5 Networks', value: 'Global, Shmura, TSN, Azure, Labs' }
     ],
-    tags: ['React', 'Node.js', 'Go', 'AWS', 'Kubernetes', 'Python/AI', 'Microservices', 'DevOps', 'Azure'],
+    tags: ['React', 'Node.js', 'Java', 'C#', 'Kubernetes', 'Python/AI', 'Microservices', 'DevOps', 'Azure'],
     bullets: [
       { title: 'Mission', description: 'To accelerate business velocity through engineering excellence.' }
     ],

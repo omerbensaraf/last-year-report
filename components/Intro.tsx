@@ -108,113 +108,155 @@ export const Intro: React.FC<IntroProps> = ({ onStart }) => {
         </div>
       )}
 
-      <div className="relative z-10 flex flex-col items-center text-center p-4">
+      <div className="relative z-10 flex flex-col items-center text-center p-4 w-full h-full justify-center">
         
-        {/* Elbit Systems Logo Header */}
-        <div className="absolute top-8 left-8 flex items-center gap-3 opacity-80">
-             <div className="w-12 h-8 relative overflow-hidden">
-                <div className="absolute inset-0 bg-white transform -skew-x-12"></div>
-             </div>
-             <div className="text-left">
-                 <div className="text-xl font-black italic text-white leading-none tracking-tighter">Elbit Systems</div>
+        {/* TOP LEFT: REAL ELBIT LOGO */}
+        <div className="absolute top-8 left-8 flex items-center gap-4 opacity-90 hover:opacity-100 transition-opacity">
+             {/* The Logo Mark */}
+             <svg viewBox="0 0 300 150" className="w-16 h-auto md:w-32 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">
+                <path d="M75 60 L150 15 L225 60" stroke="white" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <path d="M30 105 L110 105 L130 90 L270 90" stroke="white" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+             </svg>
+             <div className="text-left border-l-2 border-white/20 pl-4">
+                 <div className="text-xl md:text-2xl font-black italic text-white leading-none tracking-tighter uppercase">Elbit Systems</div>
              </div>
         </div>
 
-        {/* CENTER 3D LOGO ANIMATION */}
-        <div className="mb-16 mt-12 relative group perspective-1000">
-             {/* Glow Effect */}
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyber-500/20 rounded-full blur-[80px] animate-pulse-slow" />
+        {/* CENTER LOGO ANIMATION */}
+        <div className="mb-12 mt-8 relative group flex justify-center items-center perspective-1000">
+             <style>{`
+                .perspective-1000 { perspective: 1000px; }
+                .preserve-3d { transform-style: preserve-3d; }
+                @keyframes float-3d {
+                  0%, 100% { transform: rotateX(10deg) rotateY(-10deg) translateY(0); }
+                  50% { transform: rotateX(5deg) rotateY(10deg) translateY(-20px); }
+                }
+                @keyframes text-color-cycle {
+                  0%, 100% { fill: #ffffff; }
+                  33% { fill: #0ea5e9; } /* Cyber Blue */
+                  66% { fill: #fbbf24; } /* Gold */
+                }
+                .animate-float-3d { animation: float-3d 8s ease-in-out infinite; }
+                .animate-text-cycle { animation: text-color-cycle 8s ease-in-out infinite; }
+             `}</style>
+
+             {/* Ambient Glow */}
+             <div className="absolute w-[500px] h-[300px] bg-cyber-500/20 rounded-full blur-[80px] animate-pulse-slow" />
              
-             {/* The 3D E Shape */}
-             <div className="relative w-48 h-48 md:w-64 md:h-64 transform-style-3d animate-float">
-                 <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_0_40px_rgba(14,165,233,0.6)]">
+             {/* The 3D Logo Container */}
+             <div className="relative w-[400px] h-[200px] md:w-[700px] md:h-[350px] preserve-3d animate-float-3d">
+                 
+                 <svg viewBox="0 0 300 150" className="w-full h-full overflow-visible drop-shadow-[0_0_40px_rgba(14,165,233,0.6)]">
                     <defs>
-                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#e0f2fe" />
-                            <stop offset="40%" stopColor="#38bdf8" />
-                            <stop offset="100%" stopColor="#0ea5e9" />
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#ffffff" />
+                            <stop offset="50%" stopColor="#0ea5e9" />
+                            <stop offset="100%" stopColor="#ffffff" />
                         </linearGradient>
-                        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                             <stop offset="0%" stopColor="#fbbf24" />
-                             <stop offset="100%" stopColor="#d97706" />
-                        </linearGradient>
-                        <filter id="glowFilter">
-                             <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                             <feMerge>
-                                 <feMergeNode in="coloredBlur"/>
-                                 <feMergeNode in="SourceGraphic"/>
-                             </feMerge>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
                         </filter>
                     </defs>
-                    
-                    {/* Outer Shield / Circuit Hexagon Context */}
-                    <path 
-                        d="M100 10 L180 50 L180 150 L100 190 L20 150 L20 50 Z" 
-                        fill="none" 
-                        stroke="rgba(14,165,233,0.3)" 
-                        strokeWidth="1"
-                        className="animate-spin-slow" 
-                        style={{ transformOrigin: '100px 100px' }}
-                    />
 
-                    {/* The Main E Block */}
+                    {/* Top Roof Path */}
                     <path 
-                        d="M50 40 L160 40 L150 70 L90 70 L90 95 L140 95 L130 120 L90 120 L90 145 L150 145 L140 175 L50 175 Z" 
-                        fill="url(#logoGrad)"
-                        stroke="white"
-                        strokeWidth="0.5"
-                        filter="url(#glowFilter)"
+                        id="roofPath"
+                        d="M75 60 L150 15 L225 60" 
+                        stroke="url(#logoGradient)" 
+                        strokeWidth="8" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        fill="none"
+                        filter="url(#glow)"
                         className="opacity-90"
                     />
-                    
-                    {/* The Lightning/Arrow Accent (The 'S' implied) */}
+
+                    {/* Bottom Road Path */}
                     <path 
-                        d="M110 20 L130 20 L110 100 L130 100 L110 180 L90 180 L110 100 L90 100 Z" 
-                        fill="url(#goldGrad)" 
-                        className="mix-blend-overlay opacity-60 animate-pulse"
+                        id="roadPath"
+                        d="M30 105 L110 105 L130 90 L270 90" 
+                        stroke="url(#logoGradient)" 
+                        strokeWidth="8" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        fill="none"
+                        filter="url(#glow)"
+                        className="opacity-90"
                     />
+
+                    {/* Text Integration - WITH COLOR CYCLE */}
+                    <text 
+                        x="150" y="85" 
+                        textAnchor="middle" 
+                        fill="white" 
+                        className="text-4xl font-black italic tracking-tighter animate-text-cycle" 
+                        style={{ fontFamily: 'sans-serif', fontWeight: 900 }}
+                    >
+                        ELBIT SYSTEMS
+                    </text>
+
+                    {/* Traveling Particles (Simulating Data/Code) */}
+                    <circle r="4" fill="#fbbf24">
+                        <animateMotion dur="3s" repeatCount="indefinite" path="M75 60 L150 15 L225 60" rotate="auto">
+                            <mpath href="#roofPath"/>
+                        </animateMotion>
+                    </circle>
+                     <circle r="4" fill="#fbbf24">
+                        <animateMotion dur="4s" begin="1.5s" repeatCount="indefinite" path="M75 60 L150 15 L225 60" rotate="auto">
+                            <mpath href="#roofPath"/>
+                        </animateMotion>
+                    </circle>
+
+                    <circle r="4" fill="#22d3ee">
+                        <animateMotion dur="4s" repeatCount="indefinite" path="M30 105 L110 105 L130 90 L270 90" rotate="auto">
+                             <mpath href="#roadPath"/>
+                        </animateMotion>
+                    </circle>
+                    <circle r="4" fill="#22d3ee">
+                        <animateMotion dur="3.5s" begin="1s" repeatCount="indefinite" path="M30 105 L110 105 L130 90 L270 90" rotate="auto">
+                             <mpath href="#roadPath"/>
+                        </animateMotion>
+                    </circle>
                  </svg>
-                 
-                 {/* Floating Particles */}
-                 <div className="absolute inset-0 animate-spin-slow" style={{ animationDuration: '20s' }}>
-                     <div className="absolute top-0 left-1/2 w-1 h-1 bg-white rounded-full shadow-[0_0_10px_white]" />
-                     <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-gold-400 rounded-full shadow-[0_0_10px_#fbbf24]" />
-                 </div>
              </div>
         </div>
 
-        <h2 className="text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-cyber-200 to-cyber-600 tracking-widest outline-text drop-shadow-lg uppercase mb-2">
+        <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-cyber-200 to-cyber-600 tracking-widest outline-text drop-shadow-lg uppercase mb-6 mt-4">
           Software Applications Group
         </h2>
 
         {/* Slogan */}
-        <p className="text-xl md:text-3xl text-white font-slogan transform -rotate-1 mb-16 animate-pulse-slow drop-shadow-[0_5px_5px_rgba(0,0,0,1)] opacity-90">
+        <p className="text-xl md:text-3xl lg:text-4xl text-white font-slogan transform -rotate-1 mb-16 animate-pulse-slow drop-shadow-[0_5px_5px_rgba(0,0,0,1)] opacity-90">
           "Code the Future. Innovate Every Line"
         </p>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-6 scale-100 md:scale-110 origin-top">
           
           {/* Start Button */}
           <button 
             onClick={handleClick}
-            className="group relative w-64 px-8 py-4 bg-transparent overflow-hidden rounded-none border border-cyber-500 transition-all duration-300 hover:bg-cyber-500/10 hover:border-cyber-400 hover:shadow-[0_0_30px_rgba(14,165,233,0.4)]"
+            className="group relative w-72 px-8 py-4 bg-transparent overflow-hidden rounded-none border border-cyber-500 transition-all duration-300 hover:bg-cyber-500/10 hover:border-cyber-400 hover:shadow-[0_0_30px_rgba(14,165,233,0.4)]"
           >
             <div className="absolute inset-0 w-0 bg-cyber-500 transition-all duration-[250ms] ease-out group-hover:w-full opacity-10"></div>
             <div className="flex items-center justify-center gap-3">
-                <span className="text-lg font-mono tracking-widest text-cyber-300 group-hover:text-white">INITIALIZE</span>
-                <ChevronRight className="text-cyber-500 group-hover:text-white group-hover:translate-x-1 transition-transform" />
+                <span className="text-xl font-mono tracking-widest text-cyber-300 group-hover:text-white">INITIALIZE</span>
+                <ChevronRight className="text-cyber-500 group-hover:text-white group-hover:translate-x-1 transition-transform" size={24} />
             </div>
           </button>
 
           {/* QR Code Button */}
           <button 
             onClick={() => setShowQr(true)}
-            className="group relative w-64 px-8 py-4 bg-transparent overflow-hidden rounded-none border border-slate-600 transition-all duration-300 hover:bg-slate-800/50 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            className="group relative w-72 px-8 py-4 bg-transparent overflow-hidden rounded-none border border-slate-600 transition-all duration-300 hover:bg-slate-800/50 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]"
           >
             <div className="flex items-center justify-center gap-3">
-                <QrCode className="text-slate-400 group-hover:text-white transition-colors" size={20} />
-                <span className="text-lg font-mono tracking-widest text-slate-400 group-hover:text-white">CONTRIBUTE</span>
+                <QrCode className="text-slate-400 group-hover:text-white transition-colors" size={24} />
+                <span className="text-xl font-mono tracking-widest text-slate-400 group-hover:text-white">CONTRIBUTE</span>
             </div>
           </button>
         </div>

@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionContent } from '../types';
-import { ArrowUpRight, CheckCircle2, Quote, Upload, Wand2, Plus, Hash } from 'lucide-react';
+import { CheckCircle2, Quote, Upload, Wand2, Plus, Hash } from 'lucide-react';
 import { INNOVATION_QUOTES } from '../constants';
 
 interface ContentSlideProps {
@@ -196,10 +196,11 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
        const r = Math.floor(i / cols);
        const c = i % cols;
        
-       // Safe margins
-       const availableW = 90; 
-       const availableH = 85; 
-       const top = 5 + (r * (availableH/rows)) + (Math.random() * 5);
+       // Safe margins to prevent clipping (10% - 80%)
+       const availableW = 80; 
+       const availableH = 80; 
+       
+       const top = 10 + (r * (availableH/rows)) + (Math.random() * 5);
        const left = 5 + (c * (availableW/cols)) + (Math.random() * 5);
 
        // Use brighter colors for visibility
@@ -214,9 +215,10 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
          name: project,
          top, left,
          color: colors[i % colors.length],
-         entranceDelay: i * 0.05, 
-         floatDuration: 5 + Math.random() * 5, 
-         floatDelay: Math.random() * -5
+         // Stagger entrance by 0.2s for "popping in every second" effect
+         entranceDelay: i * 0.2, 
+         floatDuration: 4 + Math.random() * 4, 
+         floatDelay: Math.random() * -2
        };
     });
   }, [data.projects]);
@@ -347,10 +349,16 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { 0% { opacity: 0; transform: scale(0); } 70% { transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes popIn { 
+            0% { opacity: 0; transform: scale(0); } 
+            70% { opacity: 1; transform: scale(1.1); } 
+            100% { opacity: 1; transform: scale(1); } 
+        }
         @keyframes floatWander { 
            0% { transform: translate(0,0); } 
-           50% { transform: translate(5px, -5px); } 
+           25% { transform: translate(10px, -5px); }
+           50% { transform: translate(0, -10px); } 
+           75% { transform: translate(-10px, -5px); }
            100% { transform: translate(0,0); } 
         }
         .anim-fade-in { animation: fadeIn 1s ease-out forwards; }
@@ -376,7 +384,7 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                 <div className="lg:col-span-7 space-y-8">
                     <p className="text-xl leading-relaxed text-slate-300 font-light anim-fade-in">{data.description}</p>
 
-                    {/* NEW: Render Tags if they exist (The "Tabs" user might be referring to) */}
+                    {/* Render Tags */}
                     {data.tags && (
                       <div className="flex flex-wrap gap-2 mt-4 anim-slide-up">
                         {data.tags.map((tag, i) => (
@@ -410,19 +418,20 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                         </div>
                     )}
 
-                    {/* Projects Cloud - Resized and Recoulered */}
+                    {/* Projects Cloud */}
                     {data.projects && (
-                        <div className="mt-12 relative h-[300px] w-full bg-gradient-to-b from-cyber-900/20 to-transparent rounded-2xl border border-white/10 overflow-hidden shadow-inner group">
+                        <div className="mt-12 relative h-[450px] w-full bg-gradient-to-b from-cyber-900/20 to-transparent rounded-2xl border border-white/10 overflow-hidden shadow-inner group">
                             <div className="absolute top-3 left-4 text-xs font-mono text-cyber-500 uppercase tracking-wider z-10 bg-black/40 px-2 rounded">Project_Matrix_Active</div>
                             {projectConfig.map((p, i) => (
                                 <div 
                                     key={i} 
-                                    className={`absolute font-mono font-bold text-sm md:text-lg lg:text-xl ${p.color} whitespace-nowrap hover:scale-110 hover:z-20 transition-transform cursor-default`}
+                                    className={`absolute font-bold text-2xl md:text-3xl lg:text-4xl ${p.color} whitespace-nowrap hover:scale-110 hover:z-20 transition-transform cursor-default drop-shadow-lg`}
                                     style={{
                                         top: `${p.top}%`,
                                         left: `${p.left}%`,
-                                        animation: `popIn 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67) backwards, floatWander ${p.floatDuration}s ease-in-out infinite alternate`,
-                                        animationDelay: `${p.entranceDelay}s, ${p.floatDelay}s`
+                                        // 'backwards' ensures the opacity is 0 before animation starts
+                                        animation: `popIn 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67) backwards, floatWander ${p.floatDuration}s ease-in-out infinite alternate`,
+                                        animationDelay: `${p.entranceDelay}s, ${p.entranceDelay}s` 
                                     }}
                                 >
                                     {p.name}
@@ -446,9 +455,18 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data }) => {
                             {data.kpis.map((k, i) => (
                                 <div key={i} className="bg-slate-900/50 border border-white/10 p-6 rounded-xl relative group overflow-hidden hover:border-cyber-500/40 transition-colors anim-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
                                     <div className="text-xs text-slate-500 uppercase font-mono mb-2">{k.label}</div>
-                                    <div className="text-3xl md:text-4xl font-bold text-cyber-400">
-                                        {/\d/.test(k.value) && k.value.length < 15 ? <CountUp value={k.value} /> : k.value}
-                                    </div>
+                                    
+                                    {/* Special Font for "5 Networks" */}
+                                    {k.label === '5 Networks' ? (
+                                        <div className="text-lg md:text-xl font-mono font-bold text-cyber-300 leading-relaxed tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyber-300 via-white to-cyber-300">
+                                            {k.value}
+                                        </div>
+                                    ) : (
+                                        <div className="text-3xl md:text-4xl font-bold text-cyber-400">
+                                            {/\d/.test(k.value) && k.value.length < 15 ? <CountUp value={k.value} /> : k.value}
+                                        </div>
+                                    )}
+
                                     {k.trend && (
                                         <div className={`absolute top-6 right-6 text-xs font-bold px-2 py-1 rounded ${k.positive ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                                             {k.trend}
