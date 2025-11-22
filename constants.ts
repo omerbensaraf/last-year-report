@@ -42,7 +42,7 @@ export const SECTIONS: SectionContent[] = [
     title: 'Key Successes',
     subtitle: 'Deliveries & Impact',
     icon: Trophy,
-    description: 'This year marked a turning point in our delivery capability. We shipped major refactors and launched two greenfield products.',
+    description: 'We accelerated delivery and paved the way for future scale.',
     kpis: [
       { label: 'Annual Commits', value: '30,000', trend: '+15% vs last year', positive: true },
       { label: 'Releases', value: '450+', trend: '+20%', positive: true },

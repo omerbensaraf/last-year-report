@@ -34,7 +34,14 @@ export const UploadView: React.FC = () => {
             const storageRef = ref(storage, filename);
 
             // 2. Upload the base64 string
-            await uploadString(storageRef, preview, 'data_url');
+            // Add a timeout to prevent infinite hanging
+            const uploadTask = uploadString(storageRef, preview, 'data_url');
+            
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error("Upload timed out")), 15000);
+            });
+
+            await Promise.race([uploadTask, timeoutPromise]);
 
             // 3. Get the public URL
             const downloadURL = await getDownloadURL(storageRef);
