@@ -26,6 +26,7 @@ export interface SectionContent {
   imagePrompt?: string; // For placeholder generation logic if needed
   projects?: string[]; // New field for project lists
   illustration?: string; // URL for a section-specific image/gif
+  illustrationQuote?: string; // Overlay text for the illustration
   galleryImages?: string[]; // List of URLs for the gallery section
 }
 

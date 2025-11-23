@@ -561,6 +561,14 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
                         <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl group anim-zoom-in">
                             <img src={data.illustration} className="w-full h-auto object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" alt="Visual" />
                             <div className="absolute inset-0 bg-cyber-500/10 mix-blend-overlay" />
+                            
+                            {data.illustrationQuote && (
+                                <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end justify-center min-h-[150px]">
+                                    <p className="text-2xl md:text-3xl font-slogan text-white text-center drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] leading-relaxed italic">
+                                        "{data.illustrationQuote}"
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 

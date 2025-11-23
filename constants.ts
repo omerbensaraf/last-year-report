@@ -135,11 +135,8 @@ export const SECTIONS: SectionContent[] = [
     subtitle: 'The Heart of Engineering',
     icon: Users,
     description: 'Code is written by people. We invested heavily in upskilling, mental health, and creating a culture of ownership.',
-    kpis: [
-      { label: 'Promotions', value: '12' },
-      { label: 'Retention', value: '94%' },
-      { label: 'eNPS', value: '62' }
-    ],
+    illustration: 'https://images.unsplash.com/photo-1554232456-8727aae0cfa4?auto=format&fit=crop&q=80&w=1000',
+    illustrationQuote: 'The culture we share is built by the steps we take.',
     bullets: [
       { title: 'Ownership & Independence', description: 'Empowering every individual to act with autonomy, fostering a culture where ownership is the default and decision-making happens where the work is done.' },
       { title: 'Collaboration & Knowledge Sharing', description: 'Building bridges between minds. We prioritize the free flow of ideas, ensuring that individual expertise becomes collective power.' },
