@@ -81,7 +81,8 @@ export const SECTIONS: SectionContent[] = [
       }
     ],
     tags: ['Standardization', 'Responsibility', 'Innovation'],
-    illustration: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070'
+    illustration: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&q=80&w=1000',
+    illustrationQuote: 'The only way out is through.'
   },
   {
     id: 'focus',
