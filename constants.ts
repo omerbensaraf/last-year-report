@@ -49,9 +49,9 @@ export const SECTIONS: SectionContent[] = [
       { label: 'Most Commits / Dev', value: 'Dominion', positive: true }
     ],
     bullets: [
-      { title: 'Project "Titan" Launch', description: 'Delivered the new unified customer portal 2 weeks ahead of schedule.' },
-      { title: 'Legacy Migration', description: 'Successfully retired the 10-year-old monolith, moving 100% to microservices.' },
-      { title: 'Performance', description: 'Optimized database queries resulting in a 40% cost reduction in cloud spend.' }
+      { title: 'Our projects', description: 'Achieved every strategic milestone, delivering pivotal success for the business unit.' },
+      { title: 'New Technologies', description: 'Driven by Shield, Nexus, a next-gen UI, and our Linux migration, we have evolved our ecosystem to a new standard of excellence.' },
+      { title: 'New Domains', description: 'Recognized for our leadership, we were entrusted to steer two critical new groups—Automation & Deployment—defining the future of our delivery infrastructure.' }
     ]
   },
   {
@@ -141,9 +141,9 @@ export const SECTIONS: SectionContent[] = [
       { label: 'eNPS', value: '62' }
     ],
     bullets: [
-      { title: 'Tech Talks', description: 'Hosted 24 internal "Lunch & Learn" sessions covering everything from Rust to Soft Skills.' },
-      { title: 'Hackathon', description: 'Our annual 48-hour hackathon resulted in 3 ideas making it to the product roadmap.' },
-      { title: 'Hybrid Model', description: 'Solidified our "Remote-First, Office-Optional" policy.' }
+      { title: 'Ownership & Independence', description: 'Empowering every individual to act with autonomy, fostering a culture where ownership is the default and decision-making happens where the work is done.' },
+      { title: 'Collaboration & Knowledge Sharing', description: 'Building bridges between minds. We prioritize the free flow of ideas, ensuring that individual expertise becomes collective power.' },
+      { title: 'Continuous Improvement & Curiosity', description: 'Never settling for "good enough." We champion a mindset of perpetual learning, where curiosity drives us to evolve our skills and our systems every single day.' }
     ]
   },
   {
