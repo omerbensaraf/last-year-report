@@ -7,59 +7,68 @@ import { collection, addDoc } from 'firebase/firestore';
 
 export const UploadView: React.FC = () => {
   const [uploaded, setUploaded] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
+  const removePreview = (index: number) => {
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!preview) return;
+    if (previews.length === 0) return;
     
     setIsUploading(true);
 
     try {
         if (isFirebaseReady && storage && db) {
             // --- CLOUD UPLOAD (Production) ---
-            // 1. Create a unique filename
-            const filename = `memories/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-            const storageRef = ref(storage, filename);
+            const uploadPromises = previews.map(async (preview) => {
+                // 1. Create a unique filename
+                const filename = `memories/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+                const storageRef = ref(storage, filename);
 
-            // 2. Upload the base64 string
-            // Add a timeout to prevent infinite hanging
-            const uploadTask = uploadString(storageRef, preview, 'data_url');
-            
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error("Upload timed out")), 15000);
+                // 2. Upload the base64 string
+                // Add a timeout to prevent infinite hanging
+                const uploadTask = uploadString(storageRef, preview, 'data_url');
+                
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("Upload timed out")), 15000);
+                });
+
+                await Promise.race([uploadTask, timeoutPromise]);
+
+                // 3. Get the public URL
+                const downloadURL = await getDownloadURL(storageRef);
+
+                // 4. Save metadata to Firestore for real-time syncing
+                await addDoc(collection(db, 'memories'), {
+                    url: downloadURL,
+                    timestamp: Date.now(),
+                    type: 'photo'
+                });
             });
 
-            await Promise.race([uploadTask, timeoutPromise]);
+            await Promise.all(uploadPromises);
 
-            // 3. Get the public URL
-            const downloadURL = await getDownloadURL(storageRef);
-
-            // 4. Save metadata to Firestore for real-time syncing
-            // Note: We store timestamp as a number for easier sorting
-            await addDoc(collection(db, 'memories'), {
-                url: downloadURL,
-                timestamp: Date.now(),
-                type: 'photo'
-            });
         } else {
             // --- LOCAL FALLBACK (Demo/No Config) ---
-            // This only works if the presentation is running on the SAME device as the uploader
             console.warn("Firebase not configured. Falling back to local storage.");
             const existing = localStorage.getItem('gallery_uploads');
             const uploads = existing ? JSON.parse(existing) : [];
-            uploads.push(preview);
+            uploads.push(...previews);
             localStorage.setItem('gallery_uploads', JSON.stringify(uploads));
             window.dispatchEvent(new Event('storage'));
         }
@@ -78,7 +87,7 @@ export const UploadView: React.FC = () => {
 
   const reset = () => {
     setUploaded(false);
-    setPreview(null);
+    setPreviews([]);
   };
 
   if (uploaded) {
@@ -132,15 +141,29 @@ export const UploadView: React.FC = () => {
        <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 relative z-10 w-full max-w-md mx-auto">
           
           <div className="w-full aspect-[4/5] rounded-3xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center bg-slate-900/20 relative overflow-hidden group transition-all duration-300 hover:border-cyber-500/50 hover:bg-slate-900/40 shadow-2xl">
-             {preview ? (
-               <div className="relative w-full h-full">
-                   <img src={preview} className="w-full h-full object-cover" alt="Preview" />
-                   <button 
-                     onClick={() => setPreview(null)}
-                     className="absolute top-4 left-4 p-3 bg-black/60 rounded-full text-white backdrop-blur-md hover:bg-red-500/80 transition-colors"
-                   >
-                       <ArrowLeft size={20} />
-                   </button>
+             {previews.length > 0 ? (
+               <div className="relative w-full h-full overflow-y-auto p-4 grid grid-cols-2 gap-2">
+                   {previews.map((p, idx) => (
+                       <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group/item">
+                           <img src={p} className="w-full h-full object-cover" alt={`Preview ${idx}`} />
+                           <button 
+                             onClick={() => removePreview(idx)}
+                             className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white backdrop-blur-md hover:bg-red-500/80 transition-colors opacity-0 group-hover/item:opacity-100"
+                           >
+                               <ArrowLeft size={14} className="rotate-45" />
+                           </button>
+                       </div>
+                   ))}
+                   <label className="aspect-square rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-cyber-400 hover:bg-slate-800/50 transition-all">
+                        <Upload size={24} className="text-slate-500" />
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple
+                            className="hidden" 
+                            onChange={handleFile} 
+                        />
+                   </label>
                </div>
              ) : (
                <>
@@ -149,23 +172,24 @@ export const UploadView: React.FC = () => {
                  </div>
                  <h3 className="text-xl font-semibold text-slate-300 mb-2">Tap to Upload</h3>
                  <p className="text-slate-500 text-sm text-center px-8">
-                    Select a photo from your library or take a new one.
+                    Select photos from your library or take new ones.
                  </p>
+                 <input 
+                    type="file" 
+                    accept="image/*" 
+                    multiple
+                    className="absolute inset-0 w-full h-full cursor-pointer opacity-0" 
+                    onChange={handleFile} 
+                 />
                </>
              )}
-             <input 
-                type="file" 
-                accept="image/*" 
-                className={`absolute inset-0 w-full h-full cursor-pointer ${preview ? 'pointer-events-none' : 'opacity-0'}`} 
-                onChange={handleFile} 
-             />
           </div>
 
           <button 
               onClick={handleSend}
-              disabled={!preview || isUploading}
+              disabled={previews.length === 0 || isUploading}
               className={`w-full py-4 rounded-xl font-bold text-lg tracking-wide transition-all duration-300 flex items-center justify-center gap-2 shadow-lg
-                  ${!preview 
+                  ${previews.length === 0 
                       ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
                       : 'bg-gradient-to-r from-cyber-600 to-cyber-500 hover:from-cyber-500 hover:to-cyber-400 text-white shadow-cyber-500/20'
                   }
@@ -174,12 +198,12 @@ export const UploadView: React.FC = () => {
               {isUploading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>UPLOADING...</span>
+                    <span>UPLOADING {previews.length} PHOTOS...</span>
                   </>
               ) : (
                   <>
                     <CloudUpload size={20} />
-                    <span>SEND TO SCREEN</span>
+                    <span>SEND {previews.length > 0 ? `(${previews.length})` : ''} TO SCREEN</span>
                   </>
               )}
           </button>

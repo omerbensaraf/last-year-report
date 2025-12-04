@@ -145,8 +145,8 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
       e.preventDefault();
       setIsDragging(false);
       
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          processFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          Array.from(e.dataTransfer.files).forEach(file => processFile(file));
       }
   };
 
@@ -395,9 +395,14 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
                  </button>
                  <input 
                     type="file" 
+                    multiple
                     className="hidden" 
                     ref={fileInputRef} 
-                    onChange={(e) => e.target.files && e.target.files[0] && processFile(e.target.files[0])} 
+                    onChange={(e) => {
+                        if (e.target.files) {
+                            Array.from(e.target.files).forEach(file => processFile(file));
+                        }
+                    }} 
                  />
              </div>
 
