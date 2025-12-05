@@ -1,9 +1,10 @@
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionContent } from '../types';
 import { CheckCircle2, Quote, Upload, Wand2, Plus, Hash, Wifi, WifiOff, Maximize2, X } from 'lucide-react';
 import { INNOVATION_QUOTES } from '../constants';
-import { isFirebaseReady } from '../firebase';
+import { isFirebaseReady, db, storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Changed uploadString to uploadBytes
+import { collection, addDoc } from 'firebase/firestore';
 
 interface ContentSlideProps {
   data: SectionContent;
@@ -145,8 +146,8 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
       e.preventDefault();
       setIsDragging(false);
       
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          processFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          Array.from(e.dataTransfer.files).forEach(file => processFile(file));
       }
   };
 
@@ -159,14 +160,37 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
       setIsDragging(false);
   };
 
-  const processFile = (file: File) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-          const newImage = reader.result as string;
-          // For drag and drop we add to local state for immediate feedback
-          setLocalImages(prev => [newImage, ...prev]);
-      };
-      reader.readAsDataURL(file);
+  const processFile = async (file: File) => {
+      // OPTIMIZATION: Use ObjectURL instead of FileReader/Base64
+      // This creates a tiny reference string instead of loading the whole file into memory
+      const objectUrl = URL.createObjectURL(file);
+      
+      // 1. Immediate local feedback
+      setLocalImages(prev => [objectUrl, ...prev]);
+
+      // 2. Upload to Firebase if available
+      if (isFirebaseReady && storage && db) {
+          try {
+              const filename = `memories/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+              const storageRef = ref(storage, filename);
+              
+              // OPTIMIZATION: Stream the file directly using uploadBytes
+              const snapshot = await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(snapshot.ref);
+              
+              await addDoc(collection(db, 'memories'), {
+                  url: downloadURL,
+                  timestamp: Date.now(),
+                  type: 'photo'
+              });
+          } catch (error) {
+              console.error("Failed to upload from gallery:", error);
+              alert("Failed to save to cloud. Check console for details.");
+          }
+      } else {
+          console.warn("Firebase is not ready. Image will only be saved locally.");
+          alert("Firebase is not connected. Image saved locally only.");
+      }
   };
 
   const addSimulationImages = () => {
@@ -395,9 +419,14 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
                  </button>
                  <input 
                     type="file" 
+                    multiple
                     className="hidden" 
                     ref={fileInputRef} 
-                    onChange={(e) => e.target.files && e.target.files[0] && processFile(e.target.files[0])} 
+                    onChange={(e) => {
+                        if (e.target.files) {
+                            Array.from(e.target.files).forEach(file => processFile(file));
+                        }
+                    }} 
                  />
              </div>
 

@@ -23,10 +23,11 @@ export const SECTIONS: SectionContent[] = [
     icon: Globe,
     description: 'We are the technological backbone of the organization, delivering scalable, resilient, and secure software solutions across the globe.',
     kpis: [
-      { label: 'Developers', value: '139.5' },
-      { label: 'Agile Teams', value: '21' },
-      { label: 'Men / Women', value: '80.5 / 59' },
-      { label: '5 Networks', value: 'Global, Shmura, TSN, Azure, Labs' }
+      { label: 'Developers', value: '146.5' },
+      { label: 'Avg Age', value: '35.4' },
+      { label: 'Men / Women', value: '95.2 / 51.3' },
+      { label: 'Gen X / Y / Z', value: '68.1 / 86.4 / 24.9' },
+      { label: 'Work period Avg', value: '6.5' }
     ],
     tags: ['React', 'Node.js', 'Java', 'C#', 'Kubernetes', 'Python/AI', 'Microservices', 'DevOps', 'Azure'],
     bullets: [
