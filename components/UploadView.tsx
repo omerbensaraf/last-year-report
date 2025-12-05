@@ -9,6 +9,13 @@ export const UploadView: React.FC = () => {
   const [uploaded, setUploaded] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [historyCount, setHistoryCount] = useState(() => {
+      if (typeof window !== 'undefined') {
+          const existing = localStorage.getItem('gallery_uploads');
+          return existing ? JSON.parse(existing).length : 0;
+      }
+      return 0;
+  });
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -62,6 +69,12 @@ export const UploadView: React.FC = () => {
             });
 
             await Promise.all(uploadPromises);
+
+            // --- ALSO SAVE TO LOCAL STORAGE FOR HISTORY ---
+            const existing = localStorage.getItem('gallery_uploads');
+            const uploads = existing ? JSON.parse(existing) : [];
+            uploads.push(...previews);
+            localStorage.setItem('gallery_uploads', JSON.stringify(uploads));
 
         } else {
             // --- LOCAL FALLBACK (Demo/No Config) ---
@@ -134,6 +147,11 @@ export const UploadView: React.FC = () => {
          {!isFirebaseReady && (
              <div className="text-[10px] text-orange-500 bg-orange-900/20 px-2 py-1 rounded border border-orange-500/30">
                  Demo Mode
+             </div>
+         )}
+         {historyCount > 0 && (
+             <div className="text-[10px] text-cyber-400 bg-cyber-900/20 px-2 py-1 rounded border border-cyber-500/30 ml-2">
+                 {historyCount} Uploaded
              </div>
          )}
        </div>

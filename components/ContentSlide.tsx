@@ -3,7 +3,9 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { SectionContent } from '../types';
 import { CheckCircle2, Quote, Upload, Wand2, Plus, Hash, Wifi, WifiOff, Maximize2, X } from 'lucide-react';
 import { INNOVATION_QUOTES } from '../constants';
-import { isFirebaseReady } from '../firebase';
+import { isFirebaseReady, db, storage } from '../firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
 
 interface ContentSlideProps {
   data: SectionContent;
@@ -159,12 +161,39 @@ export const ContentSlide: React.FC<ContentSlideProps> = ({ data, liveImages = [
       setIsDragging(false);
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
           const newImage = reader.result as string;
-          // For drag and drop we add to local state for immediate feedback
+          
+          // 1. Immediate local feedback (optimistic UI)
           setLocalImages(prev => [newImage, ...prev]);
+
+          // 2. Upload to Firebase if available
+          if (isFirebaseReady && storage && db) {
+              console.log("Starting upload to Firebase...");
+              try {
+                  const filename = `memories/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+                  const storageRef = ref(storage, filename);
+                  
+                  await uploadString(storageRef, newImage, 'data_url');
+                  console.log("Upload successful");
+                  const downloadURL = await getDownloadURL(storageRef);
+                  
+                  await addDoc(collection(db, 'memories'), {
+                      url: downloadURL,
+                      timestamp: Date.now(),
+                      type: 'photo'
+                  });
+                  console.log("Metadata saved to Firestore");
+              } catch (error) {
+                  console.error("Failed to upload from gallery:", error);
+                  alert("Failed to save to cloud. Check console for details.");
+              }
+          } else {
+              console.warn("Firebase is not ready. Image will only be saved locally.");
+              alert("Firebase is not connected. Image saved locally only.");
+          }
       };
       reader.readAsDataURL(file);
   };
